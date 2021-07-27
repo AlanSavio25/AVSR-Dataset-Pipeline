@@ -1,25 +1,16 @@
-import csv
+import csv, json
 import sys, pdb, os
 import traceback
-import json 
 import xml.etree.ElementTree as ET 
-import datetime
+import datetime, time
 import shutil
 import glob
 import subprocess
-import time
 import pandas as pd
 from collections import defaultdict
-import datetime
-import multiprocessing as mp #import Pool, Process, set_start_method
-# import multiprocessing as mp
 from syncnet_python.facetrack import *
 from syncnet_python.syncnet import *
 from itertools import cycle
-
-import warnings
-warnings.filterwarnings("ignore", category=UserWarning)
-
 
 def prepare_output_directory(location):
     ready = True
@@ -31,27 +22,17 @@ def prepare_output_directory(location):
         return does_not_require_processing  #  This utterance has been processed already. Continuing to next utterance..
     else:
         pass
-
-    subprocess.run("mkdir -p " + location + "/pyavi/tracks/", stdout=subprocess.DEVNULL, shell=True)
-    
+    subprocess.run("mkdir -p " + location + "/pyavi/tracks/", stdout=subprocess.DEVNULL, shell=True)    
     return ready
 
-
-
-
 def calculate_active_speaker_confidence(location):
-#     output_syncnet = subprocess.run("cd syncnet_python && python3.7 run_syncnet.py --videofile " + location + "/segment.ts" + " --reference tracks --data_dir " + location + "/", capture_output=True, shell=True)
-#     print(output_syncnet.stderr)
-
-    syncnet.setup(reference='tracks',data_dir=location+'/')
+    syncnet.setup(data_dir=location+'/')
     syncnet.compute_offsets()
     
 def cleanup(location):
-    
     source = location + "/pycrop/tracks/" 
     dest = location + "/"
     fs = os.listdir(source)
-    
     for f in fs:
         new_path = shutil.move(f"{source}/{f}", f"{dest}/{f}")
     #   transcript = open(f"{dest}/transcript.txt", "w")
@@ -59,12 +40,10 @@ def cleanup(location):
     #   transcript.close()
     for f in glob.glob(f"{dest}/py*"):
         shutil.rmtree(f)
-#     os.remove(f"{dest}/segment.ts")
-
+        
 def getGenre(filename):
     xmldir = "/afs/inf.ed.ac.uk/group/cstr/datawww/asru/MGB1/data/xml/"
     xmlfile = xmldir + filename + ".xml"
-    
     tree = ET.parse(xmlfile)
     root = tree.getroot()
     head = root.find('./head/recording')
@@ -75,43 +54,34 @@ def cut_into_utterances(filename, maxWMER=1000):
     
     xmldir = "/afs/inf.ed.ac.uk/group/cstr/datawww/asru/MGB1/data/xml/"
     xmlfile = xmldir + filename + ".xml"
-    
     tree = ET.parse(xmlfile)
     root = tree.getroot()
     utterance_items = []
     paths = glob.glob(f"/afs/inf.ed.ac.uk/group/project/nst/bbcdata/ptn*/**/{filename}*.ts") + glob.glob(f"/afs/inf.ed.ac.uk/group/project/nst/bbcdata/raw/{filename}*.ts")
     inputVideo = paths[0]
     command_elems = ["ffmpeg -loglevel quiet -y -i " + inputVideo]
-
     for item in root.findall('./body/segments/segment'):
         if (item.attrib['id'].split('_')[-1]=='align' and float(item.attrib['WMER'])<=maxWMER):
-            # print(item.attrib) #print(float(item.attrib['starttime']),float(item.attrib['endtime']) )
             if (float(item.attrib['endtime']) - float(item.attrib['starttime'])<2):
-                continue
-             #   print(item.attrib['id'])
-                        
+                continue                        
             output_dir = "/disk/scratch/s1768177/pipeline/output_data/"
             location = output_dir + item.attrib['id']
             reference = "tracks"
-            
             status = prepare_output_directory(location)
             if status:
                 utterance_items.append(item)
-
                 data = item.attrib
                 start = datetime.timedelta(seconds=float(data['starttime']))
                 end = datetime.timedelta(seconds=float(data['endtime']))
                 output = location + '/pyavi/tracks/video.avi'
                 command_elems.append(" -ss " + str(start) + " -to " + str(end) + " -c copy " + output)
                 create_transcript_from_XML(location, item)
-            
     command = "".join(command_elems)
     s = time.time()
     result = subprocess.run(command, shell=True, stdout=None)
     if result.returncode != 0:
         print(f"ERROR: ffmpeg failed to trim video: {filename}")
         print(f"result: {result}")
-        
     t = time.time() - s
     print(f"Took {t} seconds to trim {len(command_elems)-1} utterances")
     return utterance_items
@@ -168,10 +138,8 @@ def generate_face_tracks(args):
         shutil.rmtree(utt)
 #         utt_with_no_faces += 1
 
-
 if __name__ == '__main__':
     
-    # use a dataloader so you don't have to access disk all the time. 
     info = {'ID':[], 
         '# Heads detected': [], 
         'Duration containing heads': [],
@@ -188,7 +156,7 @@ if __name__ == '__main__':
 
     output_dir = "/disk/scratch/s1768177/pipeline/output_data/"
 
-    files = files[:5]
+    files = files[:1]
     total_utterances_processed = 0
     print(f"\n{datetime.datetime.now()}. CROPPING utterances from raw videos.")
     
@@ -211,7 +179,8 @@ if __name__ == '__main__':
     print(f"\nFinished Cutting total {total_utterances_processed} utterances from {count-1} videos")
 
     total_utterances_before_face_tracking = len(os.listdir(output_dir))
-    
+    sys.exit(1)
+
     # ------------------FACE TRACKS ---------------------
     
     print("Initializing Face detection model on all GPUs")
@@ -226,15 +195,6 @@ if __name__ == '__main__':
     detect_time = 0
     mp.set_start_method('spawn')
 
-    
-#     pool = mp.Pool(mp.cpu_count())
-#     for utt in glob.glob(output_dir+'*')[:5]:
-#         generate_face_tracks(facetracker, utt)
-#     results = pool.imap_unordered(generate_face_tracks,[ [facetracker, utt ] for utt in glob.glob(output_dir+'*')])
-#     print(results.get())
-#     pool.close()
-#     pool.join()
-#     facetracker = 0
 
     
     processes = []
