@@ -38,43 +38,42 @@ class FaceTrack:
         return iou
 
     def track_shot(self,scenefaces):
-      iouThres = 0.5     # Minimum IOU between consecutive face detections
-      tracks = []
-      while True:
-        track = []
-        for framefaces in scenefaces:
-          for face in framefaces:
+        iouThres = 0.75    # Minimum IOU between consecutive face detections
+        tracks = []
+        while True:
+            track = []
+            for framefaces in scenefaces:
+                for face in framefaces:
+                    if track == []:
+                      track.append(face)
+                      framefaces.remove(face)
+                    elif face['frame'] - track[-1]['frame'] <= self.num_failed_det:
+                      iou = self.bb_intersection_over_union(face['bbox'], track[-1]['bbox'])
+                      if iou > iouThres:
+                        track.append(face)
+                        framefaces.remove(face)
+                        continue
+                    else:
+                        break
             if track == []:
-              track.append(face)
-              framefaces.remove(face)
-            elif face['frame'] - track[-1]['frame'] <= self.num_failed_det:
-              iou = self.bb_intersection_over_union(face['bbox'], track[-1]['bbox'])
-              if iou > iouThres:
-                track.append(face)
-                framefaces.remove(face)
-                continue
-            else:
-              break
-        if track == []:
-          break
-        elif len(track) > self.min_track:
-          framenum    = np.array([ f['frame'] for f in track ])
-          bboxes      = np.array([np.array(f['bbox']) for f in track])
-          frame_i   = np.arange(framenum[0],framenum[-1]+1)
-          bboxes_i    = []
-          for ij in range(0,4):
-            interpfn  = interp1d(framenum, bboxes[:,ij])
-            bboxes_i.append(interpfn(frame_i))
-          bboxes_i  = np.stack(bboxes_i, axis=1)
-          if max(np.mean(bboxes_i[:,2]-bboxes_i[:,0]), np.mean(bboxes_i[:,3]-bboxes_i[:,1])) > self.min_face_size:
-            tracks.append({'frame':frame_i,'bbox':bboxes_i})
-      return tracks
+                break
+            elif len(track) > self.min_track:
+                framenum    = np.array([ f['frame'] for f in track ])
+                bboxes      = np.array([np.array(f['bbox']) for f in track])
+                frame_i   = np.arange(framenum[0],framenum[-1]+1)
+                bboxes_i    = []
+                for ij in range(0,4):
+                    interpfn  = interp1d(framenum, bboxes[:,ij])
+                    bboxes_i.append(interpfn(frame_i))
+                bboxes_i  = np.stack(bboxes_i, axis=1)
+                if max(np.mean(bboxes_i[:,2]-bboxes_i[:,0]), np.mean(bboxes_i[:,3]-bboxes_i[:,1])) > self.min_face_size:
+                    tracks.append({'frame':frame_i,'bbox':bboxes_i})
+        return tracks
 
-
-    # Video crop and save
     def crop_video(self,track,cropfile,frames):
         flist = glob.glob(os.path.join(self.frames_dir,self.reference,'*.jpg'))
         flist.sort()
+        print(f"The shape of flist is: {len(flist)}")
         fourcc = cv2.VideoWriter_fourcc(*'XVID')
         vOut = cv2.VideoWriter(cropfile+'t.avi', fourcc, self.frame_rate, (224,224))
         dets = {'x':[], 'y':[], 's':[]}
@@ -83,20 +82,25 @@ class FaceTrack:
             dets['y'].append((det[1]+det[3])/2) # crop center x 
             dets['x'].append((det[0]+det[2])/2) # crop center y
       # Smooth detections
-        dets['s'] = signal.medfilt(dets['s'],kernel_size=13)   
+        dets['s'] = signal.medfilt(dets['s'],kernel_size=13)
         dets['x'] = signal.medfilt(dets['x'],kernel_size=13)
         dets['y'] = signal.medfilt(dets['y'],kernel_size=13)
         
-        for fidx, frame in enumerate(track['frame']):
+        for fidx, f in enumerate(track['frame']):
             cs  = self.crop_scale
             bs  = dets['s'][fidx]   # Detection box size
             bsi = int(bs*(1+2*cs))  # Pad videos by this amount
-            image = cv2.imread(flist[frame]) # frames[frame].numpy() # 
+            image = frames[f].numpy() #  cv2.imread(flist[f]) #
+#             print(f"flist[frame] image when read through cv2 gives: {type(cv2.imread(flist[f]))},{cv2.imread(flist[f]).shape}, {cv2.imread(flist[f])[0]}")
+#             print(f"frames[frame].numpy(): {type(frames[f].numpy())}, {frames[f].numpy().shape}, {frames[f].numpy()[0]}")
+#             print(f"is true? {frames[f].numpy() == cv2.imread(flist[f])}")
             frame = np.pad(image,((bsi,bsi),(bsi,bsi),(0,0)), 'constant', constant_values=(110,110))
             my  = dets['y'][fidx]+bsi  # BBox center Y
             mx  = dets['x'][fidx]+bsi  # BBox center X
             face = frame[int(my-bs):int(my+bs*(1+2*cs)),int(mx-bs*(1+cs)):int(mx+bs*(1+cs))]
             vOut.write(cv2.resize(face,(224,224)))
+            cv2.imwrite('frames f numpy broken.png', frames[f].numpy())
+            cv2.imwrite('good cv2 imread flist.png', cv2.imread(flist[f]))
 
         audiotmp    = os.path.join(self.tmp_dir,self.reference,'audio.wav')
         audiostart  = (track['frame'][0])/self.frame_rate
@@ -122,16 +126,11 @@ class FaceTrack:
     
     def face_detection(self, frames):
         
-        flist = glob.glob(os.path.join(self.frames_dir,self.reference,'*.jpg'))
-        flist.sort()
-        
         dets = []
-        for fidx, fname in enumerate(flist):
+        for fidx, frame in enumerate(frames):
+            frame = cv2.cvtColor(frame.numpy(), cv2.COLOR_BGR2RGB)
             start_time = time.time()
-            image = cv2.imread(fname)
-            image_np = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
-            bboxes = self.DET.detect_faces(image_np, conf_th=0.9, scales=[self.facedet_scale])
+            bboxes = self.DET.detect_faces(frame, conf_th=0.9, scales=[self.facedet_scale])
             dets.append([])
             for bbox in bboxes:
                 dets[-1].append({'frame':fidx, 'bbox':(bbox[:-1]).tolist(), 'conf':bbox[-1]})
@@ -165,17 +164,17 @@ class FaceTrack:
             rmtree(os.path.join(self.work_dir,self.reference))
         if os.path.exists(os.path.join(self.crop_dir,self.reference)):
             rmtree(os.path.join(self.crop_dir,self.reference))
-        if os.path.exists(os.path.join(self.frames_dir,self.reference)):
-            rmtree(os.path.join(self.frames_dir,self.reference))
+#         if os.path.exists(os.path.join(self.frames_dir,self.reference)):
+#             rmtree(os.path.join(self.frames_dir,self.reference))
         if os.path.exists(os.path.join(self.tmp_dir,self.reference)):
             rmtree(os.path.join(self.tmp_dir,self.reference))
         os.makedirs(os.path.join(self.work_dir,self.reference))
         os.makedirs(os.path.join(self.crop_dir,self.reference))
-        os.makedirs(os.path.join(self.frames_dir,self.reference))
+#         os.makedirs(os.path.join(self.frames_dir,self.reference))
         os.makedirs(os.path.join(self.tmp_dir,self.reference))
         
-        command = ("ffmpeg -loglevel quiet -y -i %s -qscale:v 2 -threads 1 -f image2 %s" % (os.path.join(self.avi_dir,self.reference,'video.avi'),os.path.join(self.frames_dir,self.reference,'%06d.jpg'))) 
-        output = subprocess.call(command, shell=True, stdout=None)
+#         command = ("ffmpeg -loglevel quiet -y -i %s -qscale:v 2 -threads 1 -f image2 %s" % (os.path.join(self.avi_dir,self.reference,'video.avi'),os.path.join(self.frames_dir,self.reference,'%06d.jpg'))) 
+#         output = subprocess.call(command, shell=True, stdout=None)
 
         command = ("ffmpeg -loglevel quiet -y -i %s -ac 1 -vn -acodec pcm_s16le -ar 16000 %s" % (os.path.join(self.avi_dir,self.reference,'video.avi'),os.path.join(self.avi_dir,self.reference,'audio.wav'))) 
         output = subprocess.call(command, shell=True, stdout=None)
