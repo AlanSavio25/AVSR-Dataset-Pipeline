@@ -59,6 +59,10 @@ class SyncNetIterableDataset(torch.utils.data.IterableDataset):
         self.avis = []
         for avi in glob.glob(path+'*/pycrop/*.avi'):
             self.avis.append(avi)
+            tmp_dir = avi.split('pycrop')[0]+'/pytmp/'
+            if os.path.exists(tmp_dir):
+                rmtree(tmp_dir)
+            os.makedirs(tmp_dir)
     
     def __iter__(self):
         worker_info = torch.utils.data.get_worker_info()
@@ -70,7 +74,13 @@ class SyncNetIterableDataset(torch.utils.data.IterableDataset):
             shift = worker_info.num_workers
         for i in range(offset, len(self.avis), shift):
             utt = self.avis[i].split('/pycrop/')[0]
-            yield utt, self.avis[i], self.load_frames(self.avis[i]), load_audio(utt)
+            yield utt, self.avis[i], self.load_frames(self.avis[i]), self.load_audio(utt, self.avis[i])
+    
+    def load_audio(self, utt, videofile):
+        command = f"ffmpeg -loglevel quiet -y -i {videofile} -async 1 -ac 1 -vn -acodec pcm_s16le -ar 16000 {os.path.join(utt,'pytmp/audio.wav')}"
+        output = subprocess.call(command, shell=True, stdout=None)
+        sample_rate, audio = wavfile.read(os.path.join(utt,'pytmp/audio.wav'))
+        return (sample_rate, audio)
     
     def load_frames(self, videofile):
         cap = cv2.VideoCapture(videofile)
@@ -89,47 +99,45 @@ class SyncNetIterableDataset(torch.utils.data.IterableDataset):
         frames = np.transpose(frames, (2,3,0,1))
         frames = np.array([frames[:,i:i+5,:,:] for i in range(0, frames.shape[1] - 4)], dtype='float32')
         return frames
-    
-    def load_audio(utt):
-        command = f"ffmpeg -loglevel quiet -y -i {videofile} -async 1 -ac 1 -vn -acodec pcm_s16le -ar 16000 {os.path.join(utt,'pytmp/audio.wav')}"
-        output = subprocess.call(command, shell=True, stdout=None)
-        sample_rate, audio = wavfile.read(os.path.join(utt,'pytmp/audio.wav'))
-        return (sample_rate, audio)
-
-
 
 def main(data_dir='/disk/scratch/s1768177/pipeline/output_data/'):
     
-    filelist = "/afs/inf.ed.ac.uk/group/cstr/datawww/asru/MGB1/scripts/train.short"
+    filelist = "/afs/inf.ed.ac.uk/group/cstr/datawww/asru/MGB1/scripts/dev.full"
     desired_genres = ["drama", "childrens", "news", "documentary"]
-
-#     count = 1
-#     with open(filelist, "r") as f:
-#         files = f.read().split()
-#     files = files[:1]
-#     print(f"\n{datetime.datetime.now()}. Cutting utterances from raw videos.")
-#     total_utterances_processed = 0
-#     for filename in files:
-#         genre = get_genre(filename)
-#         if (genre in desired_genres):
-#             print(f"{count}. {filename}. ({genre}) ")
-#             count += 1
-#             utterance_items = cut_into_utterances(filename, data_dir)
-#             total_utterances_processed += len(utterance_items)
-#     print(f"\nFinished cutting total {total_utterances_processed} utterances from {count-1} videos\n")
+    print(f"{datetime.datetime.now()}\n")
+    script_start = time.time()
     
-#     start = time.time()
-#     dataset = VideoIterableDataset(data_dir)
-#     dataloader = torch.utils.data.DataLoader(dataset, batch_size=None, shuffle=False, num_workers=24)
-#     facetrack = FaceTrack('cuda:0')
-#     for i, (utt, frames) in enumerate(dataloader):
-#         print(i, utt.split('/')[-1], len(frames))
-#         facetrack.run(data_dir=utt, frames=frames)
-#         no_faces_found = len(os.listdir(utt + "/pycrop/")) == 0
-#         if(no_faces_found):
-#             shutil.rmtree(utt)
-#     print(f"Time taken: {(time.time()-start)/60:.2f} minutes\n")
+    # 1. Crop utterances
+    count = 1
+    with open(filelist, "r") as f:
+        files = f.read().split()
+#     files = files[9:11]
+    print(f"Cutting utterances from raw videos.")
+    total_utterances_processed = 0
+    for filename in files:
+        genre = get_genre(filename)
+        if (genre in desired_genres):
+            print(f"{count}. {filename}. ({genre}) ")
+            count += 1
+            utterance_items = cut_into_utterances(filename, data_dir)
+            total_utterances_processed += len(utterance_items)
+    print(f"\nFinished cutting total {total_utterances_processed} utterances from {count-1} videos\n")
     
+    # 2. Generate face tracks
+    start = time.time()
+    dataset = VideoIterableDataset(data_dir)
+    dataloader = torch.utils.data.DataLoader(dataset, batch_size=None, shuffle=False, num_workers=24)
+    facetrack = FaceTrack()
+    for i, (utt, frames) in enumerate(dataloader):
+        print(i, utt.split('/')[-1], len(frames))
+        facetrack.run(data_dir=utt, frames=frames)
+        no_faces_found = len(os.listdir(utt + "/pycrop/")) == 0
+        if(no_faces_found):
+            shutil.rmtree(utt)
+    print(f"Time taken: {(time.time()-start)/60:.2f} minutes\n")
+    
+    # 3. Compute Confidence scores
+    start = time.time()
     dataset = SyncNetIterableDataset(data_dir)
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=None, shuffle=False, num_workers=24)
     syncnet = SyncNet()
@@ -138,7 +146,11 @@ def main(data_dir='/disk/scratch/s1768177/pipeline/output_data/'):
         syncnet.setup(utt)
         offset, conf, dist = syncnet.evaluate(avi,frames,sample_rate,audio)
         print(offset, conf)
+    print(f"Time taken: {(time.time()-start)/60:.2f} minutes\n")
+
     cleanup(data_dir)
+    
+    print(f"Script running time: {time.time() - script_start}")
     
 if __name__ == '__main__':
     main()
