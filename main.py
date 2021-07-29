@@ -107,21 +107,21 @@ def main(data_dir='/disk/scratch/s1768177/pipeline/output_data/'):
     print(f"{datetime.datetime.now()}\n")
     script_start = time.time()
     
-    # 1. Crop utterances
-    count = 1
-    with open(filelist, "r") as f:
-        files = f.read().split()
-#     files = files[9:11]
-    print(f"Cutting utterances from raw videos.")
-    total_utterances_processed = 0
-    for filename in files:
-        genre = get_genre(filename)
-        if (genre in desired_genres):
-            print(f"{count}. {filename}. ({genre}) ")
-            count += 1
-            utterance_items = cut_into_utterances(filename, data_dir)
-            total_utterances_processed += len(utterance_items)
-    print(f"\nFinished cutting total {total_utterances_processed} utterances from {count-1} videos\n")
+#     # 1. Crop utterances
+#     count = 1
+#     with open(filelist, "r") as f:
+#         files = f.read().split()
+# #     files = files[9:11]
+#     print(f"Cutting utterances from raw videos.")
+#     total_utterances_processed = 0
+#     for filename in files:
+#         genre = get_genre(filename)
+#         if (genre in desired_genres):
+#             print(f"{count}. {filename}. ({genre}) ")
+#             count += 1
+#             utterance_items = cut_into_utterances(filename, data_dir)
+#             total_utterances_processed += len(utterance_items)
+#     print(f"\nFinished cutting total {total_utterances_processed} utterances from {count-1} videos\n")
     
     # 2. Generate face tracks
     start = time.time()
@@ -142,7 +142,7 @@ def main(data_dir='/disk/scratch/s1768177/pipeline/output_data/'):
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=None, shuffle=False, num_workers=24)
     syncnet = SyncNet()
     for i, (utt, avi, frames, (sample_rate, audio)) in enumerate(dataloader):
-        print(i, utt, avi.split('/')[-1], len(frames))
+        print(i, utt.split('/')[-1], avi.split('/')[-1], len(frames))
         syncnet.setup(utt)
         offset, conf, dist = syncnet.evaluate(avi,frames,sample_rate,audio)
         print(offset, conf)
@@ -150,7 +150,7 @@ def main(data_dir='/disk/scratch/s1768177/pipeline/output_data/'):
 
     cleanup(data_dir)
     
-    print(f"Script running time: {time.time() - script_start}")
+    print(f"Script running time: {time.time() - script_start/60:.2f} minutes\n")
     
 if __name__ == '__main__':
     main()
