@@ -8,8 +8,8 @@ import xml.etree.ElementTree as ET
 import pandas as pd
 from collections import defaultdict
 from scipy.io import wavfile
-from syncnet_python.facetrack import *
-from syncnet_python.syncnet import *
+from facetrack import *
+from syncnet import *
 from itertools import cycle
 from utils.functions import cut_into_utterances, get_genre, \
 prepare_output_directory, create_transcript_from_XML, cleanup
@@ -57,15 +57,16 @@ class SyncNetIterableDataset(torch.utils.data.IterableDataset):
     def __init__(self, path):
         super(SyncNetIterableDataset).__init__()
         self.avis = []
-        for avi in glob.glob(path+'*/pycrop/*.avi'):
+        for avi in glob.glob(path+'*/*.avi'):
             self.avis.append(avi)
-            tmp_dir = avi.split('pycrop')[0]+'/pytmp/'
+            tmp_dir = os.path.dirname(avi)+'/pytmp/'
             if os.path.exists(tmp_dir):
                 rmtree(tmp_dir)
             os.makedirs(tmp_dir)
     
     def __iter__(self):
         worker_info = torch.utils.data.get_worker_info()
+
         if worker_info is None:
             offset = 0
             shift = 1
@@ -73,7 +74,7 @@ class SyncNetIterableDataset(torch.utils.data.IterableDataset):
             offset = worker_info.id
             shift = worker_info.num_workers
         for i in range(offset, len(self.avis), shift):
-            utt = self.avis[i].split('/pycrop/')[0]
+            utt = os.path.dirname(self.avis[i])
             yield utt, self.avis[i], self.load_frames(self.avis[i]), self.load_audio(utt, self.avis[i])
     
     def load_audio(self, utt, videofile):
@@ -99,29 +100,29 @@ class SyncNetIterableDataset(torch.utils.data.IterableDataset):
         frames = np.transpose(frames, (2,3,0,1))
         frames = np.array([frames[:,i:i+5,:,:] for i in range(0, frames.shape[1] - 4)], dtype='float32')
         return frames
-
-def main(data_dir='/disk/scratch/s1768177/pipeline/output_data/'):
+    
+def main(data_dir='/disk/scratch/s1768177/pipeline/test_output_data/'):
     
     filelist = "/afs/inf.ed.ac.uk/group/cstr/datawww/asru/MGB1/scripts/dev.full"
     desired_genres = ["drama", "childrens", "news", "documentary"]
     print(f"{datetime.datetime.now()}\n")
     script_start = time.time()
     
-#     # 1. Crop utterances
-#     count = 1
-#     with open(filelist, "r") as f:
-#         files = f.read().split()
-# #     files = files[9:11]
-#     print(f"Cutting utterances from raw videos.")
-#     total_utterances_processed = 0
-#     for filename in files:
-#         genre = get_genre(filename)
-#         if (genre in desired_genres):
-#             print(f"{count}. {filename}. ({genre}) ")
-#             count += 1
-#             utterance_items = cut_into_utterances(filename, data_dir)
-#             total_utterances_processed += len(utterance_items)
-#     print(f"\nFinished cutting total {total_utterances_processed} utterances from {count-1} videos\n")
+    # 1. Crop utterances
+    count = 1
+    with open(filelist, "r") as f:
+        files = f.read().split()
+    files = files[:3]
+    print(f"Cutting utterances from raw videos.")
+    total_utterances_processed = 0
+    for filename in files:
+        genre = get_genre(filename)
+        if (genre in desired_genres):
+            print(f"{count}. {filename}. ({genre}) ")
+            count += 1
+            utterance_items = cut_into_utterances(filename, data_dir, genre)
+            total_utterances_processed += len(utterance_items)
+    print(f"\nFinished cutting total {total_utterances_processed} utterances from {count-1} videos\n")
     
     # 2. Generate face tracks
     start = time.time()
@@ -134,12 +135,16 @@ def main(data_dir='/disk/scratch/s1768177/pipeline/output_data/'):
         no_faces_found = len(os.listdir(utt + "/pycrop/")) == 0
         if(no_faces_found):
             shutil.rmtree(utt)
+        if i>5:
+            break
     print(f"Time taken: {(time.time()-start)/60:.2f} minutes\n")
     
+    cleanup(data_dir)
+        
     # 3. Compute Confidence scores
     start = time.time()
     dataset = SyncNetIterableDataset(data_dir)
-    dataloader = torch.utils.data.DataLoader(dataset, batch_size=None, shuffle=False, num_workers=24)
+    dataloader = torch.utils.data.DataLoader(dataset, batch_size=None, shuffle=False, num_workers=20)
     syncnet = SyncNet()
     for i, (utt, avi, frames, (sample_rate, audio)) in enumerate(dataloader):
         print(i, utt.split('/')[-1], avi.split('/')[-1], len(frames))
@@ -148,9 +153,9 @@ def main(data_dir='/disk/scratch/s1768177/pipeline/output_data/'):
         print(offset, conf)
     print(f"Time taken: {(time.time()-start)/60:.2f} minutes\n")
 
-    cleanup(data_dir)
+
     
-    print(f"Script running time: {time.time() - script_start/60:.2f} minutes\n")
+    print(f"Script running time: {(time.time() - script_start)/60:.2f} minutes\n")
     
 if __name__ == '__main__':
     main()
