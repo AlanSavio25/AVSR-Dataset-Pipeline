@@ -108,38 +108,37 @@ def main(data_dir='/disk/scratch/s1768177/pipeline/test_output_data/'):
     print(f"{datetime.datetime.now()}\n")
     script_start = time.time()
     
-    # 1. Crop utterances
-    count = 1
-    with open(filelist, "r") as f:
-        files = f.read().split()
-    files = files[:3]
-    print(f"Cutting utterances from raw videos.")
-    total_utterances_processed = 0
-    for filename in files:
-        genre = get_genre(filename)
-        if (genre in desired_genres):
-            print(f"{count}. {filename}. ({genre}) ")
-            count += 1
-            utterance_items = cut_into_utterances(filename, data_dir, genre)
-            total_utterances_processed += len(utterance_items)
-    print(f"\nFinished cutting total {total_utterances_processed} utterances from {count-1} videos\n")
+#     # 1. Crop utterances
+#     count = 1
+#     with open(filelist, "r") as f:
+#         files = f.read().split()
+#     files = files[:3]
+#     print(f"Cutting utterances from raw videos.")
+#     total_utterances_processed = 0
+#     for filename in files:
+#         genre = get_genre(filename)
+#         if (genre in desired_genres):
+#             print(f"{count}. {filename}. ({genre}) ")
+#             count += 1
+#             utterance_items = cut_into_utterances(filename, data_dir, genre)
+#             total_utterances_processed += len(utterance_items)
+#     print(f"\nFinished cutting total {total_utterances_processed} utterances from {count-1} videos\n")
     
-    # 2. Generate face tracks
-    start = time.time()
-    dataset = VideoIterableDataset(data_dir)
-    dataloader = torch.utils.data.DataLoader(dataset, batch_size=None, shuffle=False, num_workers=24)
-    facetrack = FaceTrack()
-    for i, (utt, frames) in enumerate(dataloader):
-        print(i, utt.split('/')[-1], len(frames))
-        facetrack.run(data_dir=utt, frames=frames)
-        no_faces_found = len(os.listdir(utt + "/pycrop/")) == 0
-        if(no_faces_found):
-            shutil.rmtree(utt)
-        if i>5:
-            break
-    print(f"Time taken: {(time.time()-start)/60:.2f} minutes\n")
+#     # 2. Generate face tracks
+#     start = time.time()
+#     dataset = VideoIterableDataset(data_dir)
+#     dataloader = torch.utils.data.DataLoader(dataset, batch_size=None, shuffle=False, num_workers=24)
+#     facetrack = FaceTrack()
+#     for i, (utt, frames) in enumerate(dataloader):
+#         print(i, utt.split('/')[-1], len(frames))
+#         facetrack.run(data_dir=utt, frames=frames)
+#         no_faces_found = len(os.listdir(utt + "/pycrop/")) == 0
+#         if(no_faces_found):
+#             shutil.rmtree(utt)
+
+#     print(f"Time taken: {(time.time()-start)/60:.2f} minutes\n")
     
-    cleanup(data_dir)
+#     cleanup(data_dir)
         
     # 3. Compute Confidence scores
     start = time.time()

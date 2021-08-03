@@ -42,7 +42,7 @@ class SyncNet:
         setattr(self,'tmp_dir',os.path.join(self.data_dir,'pytmp'))
         setattr(self,'crop_dir',os.path.join(self.data_dir,'pycrop'))
 
-    def evaluate(self, videofile, frames, sample_rate, audio):
+    def evaluate(self, videofile, images, sample_rate, audio):
         self.model.eval()
         if os.path.exists(self.tmp_dir):
             rmtree(self.tmp_dir)
@@ -53,12 +53,14 @@ class SyncNet:
 
 #         command = ("ffmpeg -loglevel quiet -y -i %s -async 1 -ac 1 -vn -acodec pcm_s16le -ar 16000 %s" % (videofile,os.path.join(self.tmp_dir,'audio.wav')))
 #         output = subprocess.call(command, shell=True, stdout=None)
-        
-        images = []
-        flist = glob.glob(os.path.join(self.tmp_dir,'*.jpg'))
-        flist.sort()
-        for fname in flist:
-            images.append(cv2.imread(fname))
+
+#         images = []
+#         flist = glob.glob(os.path.join(self.tmp_dir,'*.jpg'))
+#         flist.sort()
+#         for fname in flist:
+#             images.append(cv2.imread(fname))
+#         print(f"Images length and type: {len(images), type(images)}")
+        images = list(images)
         im = numpy.stack(images,axis=3)
         im = numpy.expand_dims(im,axis=0)
         im = numpy.transpose(im,(0,3,4,1,2))
