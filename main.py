@@ -92,53 +92,47 @@ class SyncNetIterableDataset(torch.utils.data.IterableDataset):
             ret, image = cap.read()
             if ret == 0:
                 break
-            frames.append(cv2.resize(image, (224, 224)))
+            frames.append(image)
         cap.release()
         cv2.destroyAllWindows()
-        frames = [frames[0], frames[0]] + frames + [frames[-1], frames[-1]]
-        frames = np.stack(frames, axis=3)
-        frames = np.transpose(frames, (2,3,0,1))
-        frames = np.array([frames[:,i:i+5,:,:] for i in range(0, frames.shape[1] - 4)], dtype='float32')
-        return frames
+        return np.array(frames)
     
-def main(data_dir='/disk/scratch/s1768177/pipeline/test_output_data/'):
+def main(data_dir, filelist, desired_genres, source_dir):
     
-    filelist = "/afs/inf.ed.ac.uk/group/cstr/datawww/asru/MGB1/scripts/dev.full"
-    desired_genres = ["drama", "childrens", "news", "documentary"]
+    
     print(f"{datetime.datetime.now()}\n")
     script_start = time.time()
     
-#     # 1. Crop utterances
-#     count = 1
-#     with open(filelist, "r") as f:
-#         files = f.read().split()
-#     files = files[:3]
+    # 1. Crop utterances
+    count = 1
+    with open(filelist, "r") as f:
+        files = f.read().split()
 #     print(f"Cutting utterances from raw videos.")
-#     total_utterances_processed = 0
-#     for filename in files:
-#         genre = get_genre(filename)
-#         if (genre in desired_genres):
-#             print(f"{count}. {filename}. ({genre}) ")
-#             count += 1
-#             utterance_items = cut_into_utterances(filename, data_dir, genre)
-#             total_utterances_processed += len(utterance_items)
-#     print(f"\nFinished cutting total {total_utterances_processed} utterances from {count-1} videos\n")
+    total_utterances_processed = 0
+    for filename in files:
+        genre = get_genre(filename)
+        if (genre in desired_genres):
+            print(f"{count}. {filename}. ({genre}) ")
+            count += 1
+            utterance_items = cut_into_utterances(filename, data_dir, genre, source_dir)
+            total_utterances_processed += len(utterance_items)
+    print(f"\nFinished cutting total {total_utterances_processed} utterances from {count-1} videos\n")
     
-#     # 2. Generate face tracks
-#     start = time.time()
-#     dataset = VideoIterableDataset(data_dir)
-#     dataloader = torch.utils.data.DataLoader(dataset, batch_size=None, shuffle=False, num_workers=24)
-#     facetrack = FaceTrack()
-#     for i, (utt, frames) in enumerate(dataloader):
-#         print(i, utt.split('/')[-1], len(frames))
-#         facetrack.run(data_dir=utt, frames=frames)
-#         no_faces_found = len(os.listdir(utt + "/pycrop/")) == 0
-#         if(no_faces_found):
-#             shutil.rmtree(utt)
+    # 2. Generate face tracks
+    start = time.time()
+    dataset = VideoIterableDataset(data_dir)
+    dataloader = torch.utils.data.DataLoader(dataset, batch_size=None, shuffle=False, num_workers=24)
+    facetrack = FaceTrack()
+    for i, (utt, frames) in enumerate(dataloader):
+        print(i, utt.split('/')[-1], len(frames))
+        facetrack.run(data_dir=utt, frames=frames)
+        no_faces_found = len(os.listdir(utt + "/pycrop/")) == 0
+        if(no_faces_found):
+            shutil.rmtree(utt)
 
-#     print(f"Time taken: {(time.time()-start)/60:.2f} minutes\n")
+    print(f"Time taken: {(time.time()-start)/60:.2f} minutes\n")
     
-#     cleanup(data_dir)
+    cleanup(data_dir)
         
     # 3. Compute Confidence scores
     start = time.time()
@@ -150,11 +144,17 @@ def main(data_dir='/disk/scratch/s1768177/pipeline/test_output_data/'):
         syncnet.setup(utt)
         offset, conf, dist = syncnet.evaluate(avi,frames,sample_rate,audio)
         print(offset, conf)
+        
+    for f in glob.glob(f"{data_dir}/*/py*"):
+        shutil.rmtree(f)
     print(f"Time taken: {(time.time()-start)/60:.2f} minutes\n")
 
-
-    
     print(f"Script running time: {(time.time() - script_start)/60:.2f} minutes\n")
     
 if __name__ == '__main__':
-    main()
+    
+    data_dir ='/disk/scratch/s1768177/pipeline/mgb_transcript_human/'
+    filelist = "/afs/inf.ed.ac.uk/group/cstr/datawww/asru/MGB1/scripts/dev.full"
+    desired_genres = ["drama", "childrens", "news", "documentary"]
+    source_dir = None # "/group/project/summa/MGB1/evalVideo" #None
+    main(data_dir, filelist, desired_genres, source_dir=source_dir)

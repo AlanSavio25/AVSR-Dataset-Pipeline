@@ -11,7 +11,7 @@ from facetrack import *
 from syncnet import *
 from itertools import cycle
 
-def cut_into_utterances(filename, output_dir, genre, maxWMER=1000):
+def cut_into_utterances(filename, output_dir, genre, source_dir=None, maxWMER=1000):
     
     xmldir = "/afs/inf.ed.ac.uk/group/cstr/datawww/asru/MGB1/data/xml"
     xmlfile = os.path.join(xmldir, filename+'.xml')
@@ -20,10 +20,15 @@ def cut_into_utterances(filename, output_dir, genre, maxWMER=1000):
     utterance_items = []
     paths = glob.glob(f"/afs/inf.ed.ac.uk/group/project/nst/bbcdata/ptn*/**/{filename}*.ts") \
     + glob.glob(f"/afs/inf.ed.ac.uk/group/project/nst/bbcdata/raw/{filename}*.ts")
+    if source_dir:
+        paths += glob.glob(f"{source_dir}/*{filename}*webm")
+#         print(paths[0])
+    if len(paths)==0:
+        raise Exception(f"Could not find {filename} in any of the source directories")
     inputVideo = paths[0]
     command_elems = ["ffmpeg -loglevel quiet -y -i " + inputVideo]
     for item in root.findall('./body/segments/segment'):
-        if (item.attrib['id'].split('_')[-1]=='align' and float(item.attrib['WMER'])<=maxWMER):
+        if (item.attrib['id'].split('_')[-1]=='human'):# and float(item.attrib['WMER'])<=maxWMER):
             if (float(item.attrib['endtime']) - float(item.attrib['starttime'])<2):
                 continue                        
             location = output_dir + item.attrib['id']
@@ -36,12 +41,16 @@ def cut_into_utterances(filename, output_dir, genre, maxWMER=1000):
                 output = os.path.join(location, 'pyavi', 'video.avi')
                 command_elems.append(" -ss " + str(start) + " -to " + str(end) + " -c copy " + output) # -c:a mp3 -c:v mpeg4
                 create_transcript_from_XML(location, item, genre)
-    command = "".join(command_elems)
     s = time.time()
-    result = subprocess.run(command, shell=True, stdout=None)
-    if result.returncode != 0:
-        print(f"ERROR: ffmpeg failed to trim video: {filename}")
-        print(f"result: {result}")
+    if len(command_elems) == 1:
+        print("No utterances found.")
+        print(f"The available segments are: {list(root.findall('./body/segments'))}")
+    else:
+        command = "".join(command_elems)
+        result = subprocess.run(command, shell=True, stdout=None)
+        if result.returncode != 0:
+            print(f"ERROR: ffmpeg failed to trim video: {filename}")
+            print(f"result: {result}")
     t = time.time() - s
     print(f"Took {t} seconds to trim {len(command_elems)-1} utterances")
     return utterance_items
@@ -71,10 +80,11 @@ def prepare_output_directory(location):
     return ready
 
 def create_transcript_from_XML(location, item, genre):
-    # TODO: the transcript should only contain the words spoken in the final cropped video. 
+    # TODO: the transcript should only contain the words spoken in the final cropped video.
     utterance = ""
     for child in item:
-        utterance+=child.text + " "
+        if child.text:
+            utterance+=child.text + " "
     data = item.attrib
     data.update({"utterance": utterance})
     data.update({"genre": genre})

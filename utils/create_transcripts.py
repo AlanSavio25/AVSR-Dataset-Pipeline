@@ -8,7 +8,7 @@ import subprocess
 
 def read_syncnet_output(logfile):
     with open(logfile, 'r') as log:
-        lines = log.read().split("Model syncnet_python/data/syncnet_v2.model loaded.\n")[1].split("\n")
+        lines = log.read().split("Model syncnet_model/syncnet_v2.model loaded.\n")[1].split("\n")
     return lines
 
 def get_syncnet_scores(syncnet_output, utt_id):
@@ -36,14 +36,14 @@ def create_transcripts(data_dir, ctm_dict, logfile):
         transcript = ast.literal_eval(transcript)
         trimtimesfile = open(os.path.join(data_dir, f, 'trimtimes.txt'), 'r')
         trimtimes = trimtimesfile.read().split("\n")[1:]
-        
+
         facetracks_list = glob.glob(f"{data_dir}/{f}/*.avi")
         facetracks_list.sort()
-        videoname = transcript['id'][2:].split('_utt_')[0]
+        videoname = transcript['id'][2:].split('_speaker')[0]
         utt_start_time = (float(transcript['starttime']))
         utterance = transcript['utterance']
-        WMER = transcript['WMER']
         genre = transcript["genre"]
+
         for i, face in enumerate(facetracks_list):
             text = ["Text: "]
             trimstart = float(trimtimes[i].split(', ')[0])
@@ -54,10 +54,12 @@ def create_transcripts(data_dir, ctm_dict, logfile):
                 if start+duration>utt_start_time+trimend:
                     break
             utt_id = '/'.join(face.split('/')[-2:-1]) + " "+  face.split('/')[-1]
+            if len(text)==1:
+                text.append("[N/A]")
             print(get_syncnet_scores(syncnet_output, utt_id))
             offset, conf = get_syncnet_scores(syncnet_output, utt_id)[1].split(" ")
             duration = get_video_duration(face)
-            text.append(f"\nGenre: {genre}\nWMER: {WMER}\nSyncnet Conf: {conf}\nOffset: {offset}\nDuration: {float(duration):.2f} s")
+            text.append(f"\nGenre: {genre}\nSyncnet Conf: {conf}\nOffset: {offset}\nDuration: {float(duration):.2f} s")
             text = " ".join(text)
             print(f"Text for {os.path.splitext(face)[0]+'.txt'} is: {text}")
             with open(os.path.splitext(face)[0]+'.txt', "w") as out:
