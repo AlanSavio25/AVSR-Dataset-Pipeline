@@ -44,22 +44,7 @@ class SyncNet:
 
     def evaluate(self, videofile, images, sample_rate, audio):
         self.model.eval()
-        if os.path.exists(self.tmp_dir):
-            rmtree(self.tmp_dir)
-        os.makedirs(self.tmp_dir)
-        
-        command = ("ffmpeg -loglevel quiet -y -i %s -threads 1 -f image2 %s" % (videofile,os.path.join(self.tmp_dir,'%06d.jpg'))) 
-        output = subprocess.call(command, shell=True, stdout=None)
 
-#         command = ("ffmpeg -loglevel quiet -y -i %s -async 1 -ac 1 -vn -acodec pcm_s16le -ar 16000 %s" % (videofile,os.path.join(self.tmp_dir,'audio.wav')))
-#         output = subprocess.call(command, shell=True, stdout=None)
-
-#         images = []
-#         flist = glob.glob(os.path.join(self.tmp_dir,'*.jpg'))
-#         flist.sort()
-#         for fname in flist:
-#             images.append(cv2.imread(fname))
-#         print(f"Images length and type: {len(images), type(images)}")
         images = list(images)
         im = numpy.stack(images,axis=3)
         im = numpy.expand_dims(im,axis=0)

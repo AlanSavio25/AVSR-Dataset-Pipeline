@@ -11,8 +11,11 @@ from scipy.io import wavfile
 from facetrack import *
 from syncnet import *
 from itertools import cycle
+import yaml # install pyyaml
 from utils.functions import cut_into_utterances, get_genre, \
 prepare_output_directory, create_transcript_from_XML, cleanup
+from utils.ctm_to_dict import ctm_to_dict
+from utils.create_transcripts import *
 
 class VideoIterableDataset(torch.utils.data.IterableDataset):
     
@@ -109,6 +112,7 @@ def main(data_dir, filelist, desired_genres, source_dir):
         files = f.read().split()
 #     print(f"Cutting utterances from raw videos.")
     total_utterances_processed = 0
+    files = files[-3:-2]
     for filename in files:
         genre = get_genre(filename)
         if (genre in desired_genres):
@@ -133,28 +137,47 @@ def main(data_dir, filelist, desired_genres, source_dir):
     print(f"Time taken: {(time.time()-start)/60:.2f} minutes\n")
     
     cleanup(data_dir)
-        
+
     # 3. Compute Confidence scores
     start = time.time()
     dataset = SyncNetIterableDataset(data_dir)
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=None, shuffle=False, num_workers=20)
     syncnet = SyncNet()
+    score_file = open("syncnet_score_file.txt", "w")
     for i, (utt, avi, frames, (sample_rate, audio)) in enumerate(dataloader):
-        print(i, utt.split('/')[-1], avi.split('/')[-1], len(frames))
         syncnet.setup(utt)
         offset, conf, dist = syncnet.evaluate(avi,frames,sample_rate,audio)
-        print(offset, conf)
+        output_text = f"{i} {utt.split('/')[-1]} {avi.split('/')[-1]} {len(frames)}\n{offset} {conf}\n"
+        score_file.write(output_text)
+    score_file.close()
         
     for f in glob.glob(f"{data_dir}/*/py*"):
         shutil.rmtree(f)
     print(f"Time taken: {(time.time()-start)/60:.2f} minutes\n")
+    
+    # 4. Create transcriptions
+    ctm_dict = os.path.splitext(ctm)[0]+'.json'
+    if not os.path.exists(ctm_dict):
+        ctm_to_dict(ctm,ctm_dict)
+    create_transcripts(data_dir, ctm_dict, "syncnet_score_file.txt")
 
     print(f"Script running time: {(time.time() - script_start)/60:.2f} minutes\n")
     
 if __name__ == '__main__':
     
-    data_dir ='/disk/scratch/s1768177/pipeline/mgb_transcript_human/'
-    filelist = "/afs/inf.ed.ac.uk/group/cstr/datawww/asru/MGB1/scripts/dev.full"
-    desired_genres = ["drama", "childrens", "news", "documentary"]
+#     data_dir ='/disk/scratch/s1768177/pipeline/mgb_transcript_human/'
+#     filelist = "/afs/inf.ed.ac.uk/group/cstr/datawww/asru/MGB1/scripts/dev.full"
+#     ctm = "/afs/inf.ed.ac.uk/group/ug4-projects/s1768177/AVSR/pipeline/dev.full.ref.ctm"
+#     desired_genres = ["drama", "childrens", "news", "documentary"]
+
+    with open("config.yml", "r") as ymlfile:
+        cfg = yaml.safe_load(ymlfile)
+
+    data_dir = cfg['output_dir']
+    filelist = cfg['filelist']
+    desired_genres = cfg['desired_genres']
+#     source_dir = None #cfg['src_dir'][0]
+    ctm = cfg['ctm']
     source_dir = None # "/group/project/summa/MGB1/evalVideo" #None
+    
     main(data_dir, filelist, desired_genres, source_dir=source_dir)

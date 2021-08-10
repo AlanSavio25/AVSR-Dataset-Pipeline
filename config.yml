@@ -1,0 +1,13 @@
+src_dir:
+    - bbcdataptn
+    - group summa
+    - "/group/project/summa/MGB1/evalVideo"
+xml_dir: .xml
+filelist: "/afs/inf.ed.ac.uk/group/cstr/datawww/asru/MGB1/scripts/dev.full"
+desired_genres:
+    - "news"
+    - "documentary"
+    - "childrens"
+    - "drama"
+output_dir: '/disk/scratch/s1768177/pipeline/test_output_data/'
+ctm: "/afs/inf.ed.ac.uk/group/ug4-projects/s1768177/AVSR/pipeline/dev.full.ref.ctm"

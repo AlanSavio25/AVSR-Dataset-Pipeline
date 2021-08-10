@@ -8,7 +8,7 @@ import subprocess
 
 def read_syncnet_output(logfile):
     with open(logfile, 'r') as log:
-        lines = log.read().split("Model syncnet_model/syncnet_v2.model loaded.\n")[1].split("\n")
+        lines = log.read().split("\n")
     return lines
 
 def get_syncnet_scores(syncnet_output, utt_id):
@@ -22,8 +22,8 @@ def get_video_duration(video):
     duration = str(output.stdout)
     return duration
     
-def create_transcripts(data_dir, ctm_dict, logfile):
-    syncnet_output = read_syncnet_output(logfile)
+def create_transcripts(data_dir, ctm_dict, score_file):
+    syncnet_output = read_syncnet_output(score_file)
     for line in syncnet_output:
         if "WARNING" in line:
             syncnet_output.remove(line)
@@ -67,4 +67,4 @@ def create_transcripts(data_dir, ctm_dict, logfile):
 
 
 if __name__ == '__main__':
-    create_transcripts(sys.argv[1], ctm_dict=sys.argv[2], logfile=sys.argv[3])
+    create_transcripts(sys.argv[1], ctm_dict=sys.argv[2], score_file=sys.argv[3])
