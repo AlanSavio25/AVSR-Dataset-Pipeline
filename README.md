@@ -12,8 +12,8 @@ The models and code in this project are adapted from the following work: Paper: 
 ```
 1. $ git clone git@github.com:AlanSavio25/AVSR-Dataset-Pipeline.git  
 2. $ cd AVSR-Dataset-Pipeline
-3. conda create -n pipeline_env python=3.7
-4. source activate pipeline_env
+3. $ conda create -n pipeline_env python=3.7
+4. $ source activate pipeline_env
 5. (pipeline_env)$ pip install -r ./requirements.txt 
 6. (pipeline_env)$ source deactivate pipeline_env # When you want to leave virtual environment
 
