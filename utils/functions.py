@@ -7,9 +7,8 @@ from syncnet import *
 import logging
 logging.basicConfig(format='[%(levelname)s] %(message)s', level=logging.INFO)
 
-def cut_into_utterances(filename, output_dir, genre, source_dir=None):
+def cut_into_utterances(filename, output_dir, genre, xmldir, source_dir=None):
     
-    xmldir = "/afs/inf.ed.ac.uk/group/cstr/datawww/asru/MGB1/data/xml"
     xmlfile = os.path.join(xmldir, filename+'.xml')
     tree = ET.parse(xmlfile)
     root = tree.getroot()
