@@ -8,7 +8,7 @@ import time, pdb, argparse, subprocess, os, math, glob, pickle, gzip, cv2
 import python_speech_features
 from scipy import signal
 from scipy.io import wavfile
-from SyncNetModel import *
+from syncnet_model.SyncNetModel import *
 from shutil import rmtree
 import pandas as pd
 

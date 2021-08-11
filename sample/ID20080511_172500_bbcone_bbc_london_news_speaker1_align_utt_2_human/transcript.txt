@@ -1,0 +1,1 @@
+{'who': 'ID20080511_172500_bbcone_bbc_london_news_speaker1_align_mc', 'starttime': '4.64', 'id': 'ID20080511_172500_bbcone_bbc_london_news_speaker1_align_utt_2_human', 'endtime': '11.7785234899', 'utterance': 'THE LONDON AMBULANCE SERVICE SAYS THE DELAYS AT QUEENS HOSPITAL IN ROMFORD ARE EXCEEDING GOVERNMENT TARGETS TARGETS LEBO DISEKO REPORTS ', 'genre': 'news'}

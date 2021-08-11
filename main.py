@@ -114,7 +114,7 @@ def main(data_dir, filelist, desired_genres, source_dir):
     with open(filelist, "r") as f:
         files = f.read().split()
     total_utterances_processed = 0
-    files = files[-6:-2]
+    files = files[-6:-5]
     for filename in files:
         genre = get_genre(filename)
         if (genre in desired_genres):
@@ -123,7 +123,7 @@ def main(data_dir, filelist, desired_genres, source_dir):
             utterance_items = cut_into_utterances(filename, data_dir, genre, source_dir)
             total_utterances_processed += len(utterance_items)
     logging.info(f"\nFinished cutting total {total_utterances_processed} utterances from {count-1} videos\n")
-    sys.exit(1)
+
     # 2. Generate face tracks
     start = time.time()
     dataset = VideoIterableDataset(data_dir)
