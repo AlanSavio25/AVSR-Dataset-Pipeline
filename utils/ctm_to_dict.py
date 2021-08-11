@@ -1,9 +1,8 @@
-# This script converts all transcripts to the word-level timed trimmed transcript, which is essential for feeding into the neural network (for training and testing)
-# Pre-processing of the word level timings file, convert to json and store in memory (if too expensive, write into file once, and read into dict in subsequent processing)
-
-
+# Convert ctm to dictionary for quick access during transcript creation
 from collections import defaultdict
 import json, sys, os
+import logging
+logging.basicConfig(format='[%(levelname)s] %(message)s', level=logging.INFO)
 
 def ctm_to_dict(input_ctm, output_dict):
     
@@ -11,7 +10,6 @@ def ctm_to_dict(input_ctm, output_dict):
     lines = f.read().split("\n")
     f.close()
     ctm = defaultdict(list)
-    # Loop through ctm and build dict.
     count = 1
     for line in lines:
         if not line:
@@ -26,12 +24,10 @@ def ctm_to_dict(input_ctm, output_dict):
         word = linesplit[4]
         count += 1
         ctm[videoname].append((start, duration, word))
-
-    print(count)
-    print("Done")
+    logging.info(count)
+    logging.info("Done")
     with open(output_dict, 'w') as outfile:
         json.dump(dict(ctm), outfile, indent=4)
-
     
 if __name__ == '__main__':
     ctm_to_dict(input_ctm=sys.argv[1])
