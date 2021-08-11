@@ -1,15 +1,9 @@
-import torch 
+import torch
 import numpy as np
-import cv2
 import time, glob, shutil, datetime
-from matplotlib import pyplot as plt
-import csv, json
 import xml.etree.ElementTree as ET 
-import pandas as pd
-from collections import defaultdict
 from facetrack import *
 from syncnet import *
-from itertools import cycle
 import logging
 logging.basicConfig(format='[%(levelname)s] %(message)s', level=logging.INFO)
 

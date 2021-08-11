@@ -1,8 +1,6 @@
 #!/usr/bin/python
-import sys, time, os, pdb, argparse, pickle, subprocess, glob, cv2, random
+import sys, time, os, subprocess, glob, cv2
 import numpy as np
-from shutil import rmtree
-import GPUtil
 import scenedetect
 from scenedetect.video_manager import VideoManager
 from scenedetect.scene_manager import SceneManager
@@ -12,7 +10,9 @@ from scenedetect.detectors import ContentDetector
 from scipy.interpolate import interp1d
 from scipy.io import wavfile
 from scipy import signal
-from detectors import S3FD      
+from detectors import S3FD
+import logging
+logging.basicConfig(format='[%(levelname)s] %(message)s', level=logging.INFO)
         
 class FaceTrack:
     
@@ -85,7 +85,7 @@ class FaceTrack:
             cs  = self.crop_scale
             bs  = dets['s'][fidx]     # Detection box size
             bsi = int(bs*(1+2*cs))    # Pad videos by this amount
-            image = frames[f].numpy() #  cv2.imread(flist[f]) #
+            image = frames[f].numpy()
             frame = np.pad(image,((bsi,bsi),(bsi,bsi),(0,0)), 'constant', constant_values=(110,110))
             my  = dets['y'][fidx]+bsi  # BBox center Y
             mx  = dets['x'][fidx]+bsi  # BBox center X
@@ -101,15 +101,13 @@ class FaceTrack:
         command = f"ffmpeg -loglevel quiet -y -i {os.path.join(self.avi_dir,'audio.wav')} -ss {audiostart:.3f} -to {audioend:.3f} {audiotmp}"
         output = subprocess.call(command, shell=True, stdout=None)
         if output != 0:
-            pdb.set_trace()
-            print("Error cropping audio.")
+            logging.exception("Error cropping audio.", exc_info=True)
         sample_rate, audio = wavfile.read(audiotmp)
       # Combine audio and video files
         command = ("ffmpeg -loglevel quiet -y -i %st.avi -i %s -c:v copy -c:a copy %s.avi" % (cropfile,audiotmp,cropfile))
         output = subprocess.call(command, shell=True, stdout=None)
         if output != 0:
-            pdb.set_trace()
-            print("Error combining audio and video files")
+            logging.exception("Error combining audio and video files", exc_info=True)
         os.remove(cropfile+'t.avi')
         return {'track':track, 'proc_track':dets}
 

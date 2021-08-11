@@ -2,16 +2,10 @@ import torch
 import numpy as np
 import cv2
 import time, glob, shutil, datetime
-from matplotlib import pyplot as plt
-import csv, json
-import xml.etree.ElementTree as ET 
-import pandas as pd
-from collections import defaultdict
+import json, yaml
 from scipy.io import wavfile
 from facetrack import *
 from syncnet import *
-from itertools import cycle
-import yaml # install pyyaml
 from utils.functions import cut_into_utterances, get_genre, \
 prepare_output_directory, create_transcript_from_XML, cleanup
 from utils.ctm_to_dict import ctm_to_dict

@@ -1,16 +1,13 @@
 #!/usr/bin/python
 #-*- coding: utf-8 -*-
 # Video 25 FPS, Audio 16000HZ
-
 import torch
 import numpy
-import time, pdb, argparse, subprocess, os, math, glob, pickle, gzip, cv2
+import time, os, math
 import python_speech_features
 from scipy import signal
 from scipy.io import wavfile
 from syncnet_model.SyncNetModel import *
-from shutil import rmtree
-import pandas as pd
 
 def calc_pdist(feat1, feat2, vshift=10):
     win_size = vshift*2+1
@@ -26,10 +23,10 @@ class SyncNet:
         
         modelpath = 'syncnet_model/syncnet_v2.model'
         model = S().cuda(device)
-        model_state = model.state_dict();
-        loaded_state = torch.load(modelpath, map_location=lambda storage, loc: storage);
+        model_state = model.state_dict()
+        loaded_state = torch.load(modelpath, map_location=lambda storage, loc: storage)
         for name, param in loaded_state.items():
-            model_state[name].copy_(param);
+            model_state[name].copy_(param)
         self.model = model
         print(f"Model {modelpath} loaded.")
 
