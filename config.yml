@@ -1,8 +1,7 @@
 src_dir:
-    - bbcdataptn
-    - group summa
     - "/group/project/summa/MGB1/evalVideo"
-xml_dir: .xml
+    #- bbcdataptn and - group summa are currently hardcoded
+xml_dir: "/afs/inf.ed.ac.uk/group/cstr/datawww/asru/MGB1/data/xml"
 filelist: "/afs/inf.ed.ac.uk/group/cstr/datawww/asru/MGB1/scripts/dev.full"
 desired_genres:
     - "news"

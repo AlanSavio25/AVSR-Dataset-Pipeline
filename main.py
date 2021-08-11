@@ -97,7 +97,7 @@ class SyncNetIterableDataset(torch.utils.data.IterableDataset):
         cv2.destroyAllWindows()
         return np.array(frames)
     
-def main(data_dir, filelist, desired_genres, source_dir):
+def main(data_dir, filelist, desired_genres, xml_dir, source_dir):
     
     logging.info(f"{datetime.datetime.now()}\n")
     script_start = time.time()
@@ -113,7 +113,7 @@ def main(data_dir, filelist, desired_genres, source_dir):
         if (genre in desired_genres):
             logging.info(f"{count}. {filename}. ({genre}) ")
             count += 1
-            utterance_items = cut_into_utterances(filename, data_dir, genre, source_dir)
+            utterance_items = cut_into_utterances(filename, data_dir, genre, xml_dir, source_dir)
             total_utterances_processed += len(utterance_items)
     logging.info(f"\nFinished cutting total {total_utterances_processed} utterances from {count-1} videos\n")
 
@@ -168,4 +168,5 @@ if __name__ == '__main__':
 #     source_dir = None #cfg['src_dir'][0]
     ctm = cfg['ctm']
     source_dir = None # "/group/project/summa/MGB1/evalVideo"
-    main(data_dir, filelist, desired_genres, source_dir=source_dir)
+    xml_dir = cfg['xml_dir']
+    main(data_dir, filelist, desired_genres, xml_dir, source_dir=source_dir)
