@@ -1,6 +1,7 @@
 #!/usr/bin/python
 import sys, time, os, subprocess, glob, cv2
 import numpy as np
+import shutil 
 import scenedetect
 from scenedetect.video_manager import VideoManager
 from scenedetect.scene_manager import SceneManager
@@ -147,9 +148,9 @@ class FaceTrack:
         setattr(self,'crop_dir', os.path.join(self.data_dir,'pycrop'))
         setattr(self,'frames_dir', os.path.join(self.data_dir,'pyframes'))
         if os.path.exists(self.crop_dir):
-            rmtree(self.crop_dir)
+            shutil.rmtree(self.crop_dir)
         if os.path.exists(self.tmp_dir):
-            rmtree(self.tmp_dir)
+            shutil.rmtree(self.tmp_dir)
         os.makedirs(self.crop_dir)
         os.makedirs(self.tmp_dir)
         
@@ -166,4 +167,4 @@ class FaceTrack:
                 alltracks.extend(self.track_shot(faces[shot[0].frame_num:shot[1].frame_num]))
         for ii, track in enumerate(alltracks):
             vidtracks.append(self.crop_video(track,os.path.join(self.crop_dir,'%05d'%ii),frames))
-        rmtree(self.tmp_dir)                                                                                                    
+        shutil.rmtree(self.tmp_dir)                                                                                                    

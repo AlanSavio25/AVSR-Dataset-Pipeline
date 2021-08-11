@@ -24,7 +24,7 @@ class VideoIterableDataset(torch.utils.data.IterableDataset):
             self.utts.append(utt)
             frames_dir = utt+'/pyframes/'
             if os.path.exists(frames_dir):
-                rmtree(frames_dir)
+                shutil.rmtree(frames_dir)
             os.makedirs(frames_dir)
     
     def __iter__(self):
@@ -61,7 +61,7 @@ class SyncNetIterableDataset(torch.utils.data.IterableDataset):
             self.avis.append(avi)
             tmp_dir = os.path.dirname(avi)+'/pytmp/'
             if os.path.exists(tmp_dir):
-                rmtree(tmp_dir)
+                shutil.rmtree(tmp_dir)
             os.makedirs(tmp_dir)
     
     def __iter__(self):
@@ -98,7 +98,6 @@ class SyncNetIterableDataset(torch.utils.data.IterableDataset):
         return np.array(frames)
     
 def main(data_dir, filelist, desired_genres, source_dir):
-    
     
     logging.info(f"{datetime.datetime.now()}\n")
     script_start = time.time()
@@ -144,6 +143,7 @@ def main(data_dir, filelist, desired_genres, source_dir):
         offset, conf, dist = syncnet.evaluate(avi,frames,sample_rate,audio)
         output_text = f"{i} {utt.split('/')[-1]} {avi.split('/')[-1]} {len(frames)}\n{offset} {conf}\n"
         score_file.write(output_text)
+        logging.info(output_text)
     score_file.close()
         
     for f in glob.glob(f"{data_dir}/*/py*"):

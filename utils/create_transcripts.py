@@ -57,12 +57,12 @@ def create_transcripts(data_dir, ctm_dict, score_file):
             utt_id = '/'.join(face.split('/')[-2:-1]) + " "+  face.split('/')[-1]
             if len(text)==1:
                 text.append("[N/A]")
-            logging.info(get_syncnet_scores(syncnet_output, utt_id))
+#             logging.info(get_syncnet_scores(syncnet_output, utt_id))
             offset, conf = get_syncnet_scores(syncnet_output, utt_id)[1].split(" ")
             duration = get_video_duration(face)
             text.append(f"\nGenre: {genre}\nSyncnet Conf: {conf}\nOffset: {offset}\nDuration: {float(duration):.2f} s")
             text = " ".join(text)
-            logging.info(f"Text for {os.path.splitext(face)[0]+'.txt'} is: {text}")
+#             logging.info(f"Text for {os.path.splitext(face)[0]+'.txt'} is: {text}")
             with open(os.path.splitext(face)[0]+'.txt', "w") as out:
                 out.write(text)
 
